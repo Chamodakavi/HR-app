@@ -4,17 +4,6 @@ import pandas as pd
 from fpdf import FPDF
 
 st.set_page_config(page_title="HR OT Tracker", layout="wide")
-# --- HIDE STREAMLIT STYLE ---
-hide_st_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            header {visibility: hidden;}
-            /* This hides the "Manage App" button for users */
-            .stAppDeployButton {display:none;}
-            </style>
-            """
-st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # Initialize session state
 if 'days_list' not in st.session_state:
@@ -82,11 +71,31 @@ if st.session_state.days_list:
     df = pd.DataFrame(st.session_state.days_list)
     
     st.subheader("Monthly Log")
-    st.table(df)
+    
+    # Header for the interactive table
+    cols = st.columns([2, 1, 1, 1, 1, 1, 1])
+    fields = ["Date", "Check-In", "Check-Out", "Total", "OT", "Action"]
+    for col, field in zip(cols, fields):
+        col.write(f"**{field}**")
+
+    # Row display with Delete Button
+    for i, row in enumerate(st.session_state.days_list):
+        r_cols = st.columns([2, 1, 1, 1, 1, 1, 1])
+        r_cols[0].write(row["Date"])
+        r_cols[1].write(row["Check-In"])
+        r_cols[2].write(row["Check-Out"])
+        r_cols[3].write(str(row["Total Worked"]))
+        r_cols[4].write(str(row["OT Hours"]))
+        
+        # Delete Function logic
+        if r_cols[5].button("🗑️", key=f"delete_{i}"):
+            st.session_state.days_list.pop(i)
+            st.rerun()
     
     total_w = df["Total Worked"].sum()
     total_ot = df["OT Hours"].sum()
     
+    st.divider()
     col_a, col_b, col_c = st.columns(3)
     col_a.metric("Total Hours", f"{total_w:.2f} hrs")
     col_b.metric("Total OT", f"{total_ot:.2f} hrs")
@@ -98,7 +107,7 @@ if st.session_state.days_list:
     df_export = df.copy()
     summary_row = pd.DataFrame([{
         "Date": "TOTAL", "Check-In": "", "Check-Out": "", 
-        "Lunch (min)": "", "Total Worked": round(total_w, 2), "OT Hours": round(total_ot, 2)
+        "Total Worked": round(total_w, 2), "OT Hours": round(total_ot, 2)
     }])
     df_export = pd.concat([df_export, summary_row], ignore_index=True)
     csv = df_export.to_csv(index=False).encode('utf-8')
@@ -116,16 +125,16 @@ if st.session_state.days_list:
 
         # Table Header
         pdf.set_font("Arial", "B", 10)
-        cols = dataframe.columns.tolist()
-        col_width = 190 / len(cols)
-        for col in cols:
+        pdf_cols = ["Date", "Check-In", "Check-Out", "Total Worked", "OT Hours"]
+        col_width = 190 / len(pdf_cols)
+        for col in pdf_cols:
             pdf.cell(col_width, 10, col, 1)
         pdf.ln()
 
         # Table Body
         pdf.set_font("Arial", "", 10)
         for _, row in dataframe.iterrows():
-            for col in cols:
+            for col in pdf_cols:
                 pdf.cell(col_width, 10, str(row[col]), 1)
             pdf.ln()
 
