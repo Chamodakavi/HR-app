@@ -4,6 +4,17 @@ import pandas as pd
 from fpdf import FPDF
 
 st.set_page_config(page_title="HR OT Tracker", layout="wide")
+# --- HIDE STREAMLIT STYLE ---
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            /* This hides the "Manage App" button for users */
+            .stAppDeployButton {display:none;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # Initialize session state
 if 'days_list' not in st.session_state:
