@@ -15,7 +15,17 @@ st.title("🕒 HR Attendance & OT Tracker")
 with st.sidebar:
     st.header("Settings")
     name_user = st.text_input("Employee Name", value="Employee").strip()
-    const_hours = st.number_input("Standard Shift (Hours)", value=8.0, step=0.5)
+    
+    st.divider()
+    # Checkbox for Manual Shift Override
+    override_shift = st.checkbox("Manual Shift Override", value=False)
+    
+    if override_shift:
+        const_hours = st.number_input("Manual Standard Shift (Hours)", value=8.0, step=0.5)
+    else:
+        st.write("💡 *Shift rules applied automatically:*")
+        st.write("- Weekdays: **8.0 Hours**")
+        st.write("- Saturdays: **5.0 Hours**")
     
     st.divider()
     if st.button("Reset Entire Month", type="primary"):
@@ -29,9 +39,9 @@ with st.expander("➕ Add Daily Entry", expanded=True):
     with c1:
         date_in = st.date_input("Select Date", datetime.now())
     with c2:
-        check_in = st.text_input("Check-In (HH:MM)", value="08:00")
+        check_in = st.text_input("Check-In (HH.MM or HH:MM)", value="08.00")
     with c3:
-        check_out = st.text_input("Check-Out (HH:MM)", value="17:00")
+        check_out = st.text_input("Check-Out (HH.MM or HH:MM)", value="17.00")
     with c4:
         lunch_break = st.number_input("Lunch (Minutes)", value=60, step=5)
 
@@ -43,18 +53,33 @@ with st.expander("➕ Add Daily Entry", expanded=True):
             st.error(f"Entry for {selected_date_str} already exists!")
         else:
             try:
+                # Determine Standard Shift Boundary (Automatic vs Manual Override)
+                if override_shift:
+                    # Uses the hours from the sidebar manual input
+                    final_const_hours = const_hours 
+                else:
+                    # Automatic system calculation
+                    if date_in.weekday() == 5:
+                        final_const_hours = 5.0
+                    else:
+                        final_const_hours = 8.0
+
+                # Support both dot (.) and colon (:) formats
+                check_in_clean = check_in.strip().replace(".", ":")
+                check_out_clean = check_out.strip().replace(".", ":")
+
                 fmt = "%H:%M"
-                t1 = datetime.strptime(check_in, fmt)
-                t2 = datetime.strptime(check_out, fmt)
+                t1 = datetime.strptime(check_in_clean, fmt)
+                t2 = datetime.strptime(check_out_clean, fmt)
                 
                 gross_hours = (t2 - t1).total_seconds() / 3600
                 net_hours = gross_hours - (lunch_break / 60)
-                ot_hours = max(0.0, net_hours - const_hours)
+                ot_hours = max(0.0, net_hours - final_const_hours)
                 
                 st.session_state.days_list.append({
                     "Date": selected_date_str,
-                    "Check-In": check_in,
-                    "Check-Out": check_out,
+                    "Check-In": check_in_clean,
+                    "Check-Out": check_out_clean,
                     "Lunch (min)": lunch_break,
                     "Total Worked": round(net_hours, 2),
                     "OT Hours": round(ot_hours, 2)
@@ -63,7 +88,7 @@ with st.expander("➕ Add Daily Entry", expanded=True):
                 st.rerun()
                 
             except ValueError:
-                st.error("Invalid Time Format. Use HH:MM (24-hour).")
+                st.error("Invalid Time Format. Please use HH.MM or HH:MM (e.g., 08.30 or 17:00).")
 
 # 3. Data Display & Export
 if st.session_state.days_list:
